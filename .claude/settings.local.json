@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --yes)",
+      "Bash(npx create-next-app@latest memberbase --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --yes)",
+      "Bash(mv memberbase/* .)",
+      "Bash(mv memberbase/.* .)",
+      "Bash(rmdir memberbase:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults --base-color slate)",
+      "Bash(npx shadcn@latest init --defaults)"
+    ]
+  }
+}
