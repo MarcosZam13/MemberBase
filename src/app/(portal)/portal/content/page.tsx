@@ -80,7 +80,11 @@ export default async function PortalContentPage({ searchParams }: PortalContentP
 
       {/* Filtro de categorías — envuelto en Suspense porque usa useSearchParams */}
       <Suspense fallback={null}>
-        <CategoryFilter categories={categories} activeSlug={categorySlug ?? null} />
+        <CategoryFilter
+          categories={categories}
+          activeSlug={categorySlug ?? null}
+          totalCount={contentItems.length}
+        />
       </Suspense>
 
       {filtered.length === 0 ? (
