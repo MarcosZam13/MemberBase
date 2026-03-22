@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Eye, EyeOff, FileText, Video, Image as ImageIcon, FileDown, Link as LinkIcon } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, FileText, Video, Image as ImageIcon, FileDown, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { z } from "zod";
 import { createContentSchema, type CreateContentInput } from "@/lib/validations/content";
-import { createContent, togglePublished } from "@/actions/content.actions";
+import { createContent, togglePublished, deleteContent } from "@/actions/content.actions";
 import type { Content, MembershipPlan, ContentType, ContentCategory } from "@/types/database";
 
 const TYPE_ICONS: Record<ContentType, React.ComponentType<{ className?: string }>> = {
@@ -62,6 +62,19 @@ export function ContentClient({ initialContent, plans, categories }: ContentClie
       : [...selectedPlanIds, planId];
     setSelectedPlanIds(updated);
     setValue("plan_ids", updated);
+  };
+
+  const handleDelete = async (item: Content) => {
+    // Confirmación nativa antes de eliminar de forma permanente
+    if (!window.confirm(`¿Eliminar "${item.title}"? Esta acción no se puede deshacer.`)) return;
+
+    const result = await deleteContent(item.id);
+    if (result.success) {
+      setContent((prev) => prev.filter((c) => c.id !== item.id));
+      toast.success("Contenido eliminado");
+    } else {
+      toast.error("Error al eliminar el contenido");
+    }
   };
 
   const handleTogglePublished = async (item: Content) => {
@@ -160,15 +173,25 @@ export function ContentClient({ initialContent, plans, categories }: ContentClie
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1"
-                        onClick={() => handleTogglePublished(item)}
-                      >
-                        {item.is_published ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                        {item.is_published ? "Ocultar" : "Publicar"}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => handleTogglePublished(item)}
+                        >
+                          {item.is_published ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          {item.is_published ? "Ocultar" : "Publicar"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(item)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

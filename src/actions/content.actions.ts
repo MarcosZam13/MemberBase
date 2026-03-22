@@ -174,6 +174,28 @@ export async function updateContent(formData: unknown): Promise<ActionResult> {
   return { success: true };
 }
 
+// Elimina un contenido y sus relaciones con planes (solo admin)
+export async function deleteContent(contentId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "No autenticado" };
+  if (user.role !== "admin") return { success: false, error: "Sin permisos" };
+
+  const supabase = await createClient();
+
+  // Eliminar relaciones con planes primero (FK constraint)
+  await supabase.from("content_plans").delete().eq("content_id", contentId);
+
+  const { error } = await supabase.from("content").delete().eq("id", contentId);
+  if (error) {
+    console.error("[deleteContent] Error:", error.message);
+    return { success: false, error: "Error al eliminar el contenido." };
+  }
+
+  revalidatePath("/admin/content");
+  revalidatePath("/portal/content");
+  return { success: true };
+}
+
 // Cambia el estado publicado/borrador de un contenido (solo admin)
 export async function togglePublished(contentId: string, isPublished: boolean): Promise<ActionResult> {
   const user = await getCurrentUser();

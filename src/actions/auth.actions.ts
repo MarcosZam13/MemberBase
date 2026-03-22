@@ -7,6 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import type { ActionResult } from "@/types/database";
 
+// Máximo de intentos fallidos permitidos antes de bloquear temporalmente
+const MAX_LOGIN_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW_MINUTES = 15;
+
 // Inicia sesión con email y contraseña, redirige según el rol del usuario
 export async function signIn(formData: FormData): Promise<ActionResult> {
   const raw = {
@@ -21,12 +25,31 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   }
 
   const supabase = await createClient();
+
+  // Verificar cuántos intentos fallidos recientes tiene este email
+  const { data: attemptCount, error: rpcError } = await supabase.rpc(
+    "count_recent_login_attempts",
+    { p_identifier: parsed.data.email, p_minutes: RATE_LIMIT_WINDOW_MINUTES }
+  );
+
+  if (!rpcError && attemptCount >= MAX_LOGIN_ATTEMPTS) {
+    return {
+      success: false,
+      error: `Demasiados intentos fallidos. Espera ${RATE_LIMIT_WINDOW_MINUTES} minutos antes de intentar de nuevo.`,
+    };
+  }
+
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) {
+    // Registrar el intento fallido para el rate limiting
+    await supabase.from("login_attempts").insert({ identifier: parsed.data.email });
+    // Limpiar intentos viejos en segundo plano para no acumular registros
+    await supabase.rpc("cleanup_old_login_attempts");
+
     // No exponer detalles internos del error al cliente
     console.error("[signIn] Error de autenticación:", error.message);
     return { success: false, error: "Correo o contraseña incorrectos" };

@@ -157,6 +157,34 @@ export async function deletePostAction(postId: string): Promise<ActionResult> {
   }
 }
 
+// Permite al autor del post eliminar su propio post
+// Verifica en la DB que el usuario sea realmente el autor antes de borrar
+export async function deleteOwnPostAction(postId: string): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const supabase = await createClient();
+
+  // Verificar que el post pertenece al usuario antes de eliminar
+  const { data: post, error: fetchError } = await supabase
+    .from("community_posts")
+    .select("user_id")
+    .eq("id", postId)
+    .single();
+
+  if (fetchError || !post) return { success: false, error: "Post no encontrado" };
+  if (post.user_id !== user.id) return { success: false, error: "No tienes permiso para eliminar este post" };
+
+  try {
+    await deletePost(supabase, postId);
+    revalidatePath("/portal/community");
+    return { success: true };
+  } catch (error) {
+    console.error("[deleteOwnPostAction] Error:", error);
+    return { success: false, error: "Error al eliminar el post" };
+  }
+}
+
 // Cambia la visibilidad de un comentario — solo admins
 export async function toggleCommentVisibilityAction(
   commentId: string,

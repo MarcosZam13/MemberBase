@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getPostById } from "@/actions/community.actions";
 import { getUserSubscription } from "@/actions/payment.actions";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/utils";
 import CommentForm from "./CommentForm";
+import { DeletePostButton } from "./DeletePostButton";
 
 interface PostDetailPageProps {
   params: Promise<{ id: string }>;
@@ -18,14 +20,17 @@ interface PostDetailPageProps {
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
   const { id } = await params;
 
-  const [post, subscription] = await Promise.all([
+  const [post, subscription, currentUser] = await Promise.all([
     getPostById(id),
     getUserSubscription(),
+    getCurrentUser(),
   ]);
 
   if (!post) notFound();
 
   const canComment = subscription?.status === "active";
+  // El autor puede borrar su propio post
+  const isAuthor = currentUser?.id === post.user_id;
   const visibleComments = (post.comments ?? []).filter((c) => c.is_visible);
 
   return (
@@ -48,6 +53,7 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
               Fijado
             </Badge>
           )}
+          {isAuthor && <DeletePostButton postId={post.id} />}
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
